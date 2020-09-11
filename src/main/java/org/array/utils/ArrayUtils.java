@@ -8,11 +8,17 @@ import java.util.stream.Collectors;
 
 public interface ArrayUtils {
 
+    @SafeVarargs
+    static <T> Set<T> ofSet(T... values){
+        return new HashSet<>(Arrays.asList(values));
+    }
+
+    @SafeVarargs
     static <O, T> Set<T> getCommon(Function<O, T> function, Function<T, String> toID, O... collection){
         return getCommon(function, toID, Arrays.asList(collection));
     }
 
-    static <O, T> Set<T> getCommon(Function<O, T> function, Function<T, String> toID, Collection<O> collection){
+    static <O, T> Set<T> getCommon(Function<O, T> function, Function<T, String> toID, Iterable<O> collection){
         Map<String, Map.Entry<T, Integer>> map = new HashMap<>();
         collection.forEach(v -> {
             T value = function.apply(v);
@@ -26,7 +32,7 @@ public interface ArrayUtils {
             }
             map.put(id, new AbstractMap.SimpleEntry<>(value, 1));
         });
-        Set<Map.Entry<String, Map.Entry<T, Integer>>> best = getBests(e -> e.getValue().getValue(), (c, b) -> c > b, (c, b) -> c == b, map.entrySet());
+        Set<Map.Entry<String, Map.Entry<T, Integer>>> best = getBests(e -> e.getValue().getValue(), (c, b) -> c > b, Integer::equals, map.entrySet());
         if(best.isEmpty()){
             return new HashSet<>();
         }
@@ -41,7 +47,7 @@ public interface ArrayUtils {
      * @param <T> the element type
      * @return the total
      */
-    static <T extends Object> int countInt(int start, Function<T, Integer> function, Collection<T> collection){
+    static <T> int countInt(int start, Function<T, Integer> function, Iterable<T> collection){
         return count(start, function, Integer::sum, collection);
     }
 
@@ -53,7 +59,7 @@ public interface ArrayUtils {
      * @param <T> the element type
      * @return the total
      */
-    static <T extends Object> double countDouble(double start, Function<T, Double> function, Collection<T> collection){
+    static <T> double countDouble(double start, Function<T, Double> function, Iterable<T> collection){
         return count(start, function, Double::sum, collection);
     }
 
@@ -67,7 +73,7 @@ public interface ArrayUtils {
      * @param <N> the type of number
      * @return the total.
      */
-    static <T extends Object, N extends Number> N count(N start, Function<T, N> function, BiFunction<N, N, N> add, Collection<T> collection){
+    static <T, N extends Number> N count(N start, Function<T, N> function, BiFunction<N, N, N> add, Iterable<T> collection){
         N num = start;
         for(T value : collection){
             num = add.apply(function.apply(value), num);
@@ -75,7 +81,7 @@ public interface ArrayUtils {
         return num;
     }
 
-    static <E, I, T extends Collection<I>> T build(T array, BiConsumer<T, E> consumer, Collection<E> collection){
+    static <E, I, T extends Collection<I>> T build(T array, BiConsumer<T, E> consumer, Iterable<E> collection){
         collection.forEach(t -> consumer.accept(array, t));
         return array;
     }
@@ -91,7 +97,7 @@ public interface ArrayUtils {
      * @param <T> The supplier
      * @return The new array
      */
-    static <A, E, I, T extends Collection<E>> T convert(Collector<E, I, T> collector, Function<A, E> consumer, Collection<A> collection){
+    static <A, E, I, T extends Collection<E>> T convert(Collector<E, I, T> collector, Function<A, E> consumer, Iterable<A> collection){
         I supplier = collector.supplier().get();
         collection.forEach(e -> collector.accumulator().accept(supplier, consumer.apply(e)));
         return collector.finisher().apply(supplier);
@@ -123,7 +129,7 @@ public interface ArrayUtils {
      * @param <I> The new collection element type
      * @return The new list
      */
-    static <E, I>  List<I> convert(Function<E, I> function, Collection<E> collection){
+    static <E, I>  List<I> convert(Function<E, I> function, Iterable<E> collection){
         return convert(new ArrayList<>(), function, collection);
     }
 
@@ -137,7 +143,7 @@ public interface ArrayUtils {
      * @param <T> collection type
      * @return the provided new collection
      */
-    static <E, I, T extends Collection<I>> T convert(T array, Function<E, I> function, Collection<E> collection){
+    static <E, I, T extends Collection<I>> T convert(T array, Function<E, I> function, Iterable<E> collection){
         collection.forEach(c -> array.add(function.apply(c)));
         return array;
     }
@@ -172,7 +178,9 @@ public interface ArrayUtils {
                 ret.append(split).append(toString.apply(value));
             }
         }
-        assert ret != null;
+        if(ret == null){
+            return null;
+        }
         return ret.toString();
     }
 
@@ -197,16 +205,16 @@ public interface ArrayUtils {
      * @param <T> element type
      * @return the "best" element - optional if no best can be found
      */
-    static <T> Optional<T> getBest(Function<T, Integer> function, BiPredicate<Integer, Integer> compare, Collection<T> collection){
+    static <T> Optional<T> getBest(Function<T, Integer> function, BiPredicate<Integer, Integer> compare, Iterable<T> collection){
         T value = null;
         Integer best = null;
-        for(T value1 : collection){
-            if(value == null){
+        for (T value1 : collection) {
+            if (value == null) {
                 value = value1;
                 best = function.apply(value1);
             }
             int current = function.apply(value1);
-            if(compare.test(current, best)){
+            if (compare.test(current, best)) {
                 value = value1;
                 best = function.apply(value1);
             }
@@ -239,7 +247,7 @@ public interface ArrayUtils {
      * @param <N> The value to compare
      * @return the best elements
      */
-    static <T, N extends Number> Set<T> getBests(Function<T, N> function, BiPredicate<N, N> compare, BiPredicate<N, N> equal, Collection<T> collection){
+    static <T, N extends Number> Set<T> getBests(Function<T, N> function, BiPredicate<N, N> compare, BiPredicate<N, N> equal, Iterable<T> collection){
         Set<T> value = new HashSet<>();
         N best = null;
         for(T value1 : collection){
@@ -269,8 +277,12 @@ public interface ArrayUtils {
         if(max < min){
             throw new IndexOutOfBoundsException("min (" + min + ") is greater then max (" + max + ")");
         }
-        String[] arr = new String[(max + 1) - min];
-        if (max + 1 - min >= 0) System.arraycopy(array, min, arr, 0, max + 1 - min);
+        String[] arr = new String[max - min];
+        if (max + 1 - min >= 0) {
+            for(int A = min; A < max; A++){
+                arr[A - min] = array[A];
+            }
+        }
         return arr;
     }
 
@@ -294,7 +306,7 @@ public interface ArrayUtils {
         return buildArray(clazz, function, Arrays.asList(array));
     }
 
-    static <X, T> T[] buildArray(Class<T> clazz, Function<X, T[]> function, Collection<X> collection){
+    static <X, T> T[] buildArray(Class<T> clazz, Function<X, T[]> function, Iterable<X> collection){
         T[] array = (T[]) Array.newInstance(clazz, 0);
         for(X ins : collection){
             join(clazz, array, function.apply(ins));
@@ -302,18 +314,22 @@ public interface ArrayUtils {
         return array;
     }
 
-    @SafeVarargs
     static <T> T[] join(Class<T> clazz, T[]... arrays){
-        T[] array = (T[])Array.newInstance(clazz, 0);
-        for(T[] array1 : arrays){
-            T[] array2 = (T[])Array.newInstance(clazz, array.length + array1.length);
-            int A;
-            for(A = 0; A < array.length; A++){
-                array2[A] = array[A];
-            }
-            for(; A < array.length + array1.length; A++){
-                array2[A] = array1[A - array.length];
-            }
+        List<T> list = new ArrayList<>();
+        for (T[] array : arrays) {
+            Collections.addAll(list, array);
+        }
+        return list.toArray((T[])Array.newInstance(clazz, list.size()));
+    }
+
+    static <T> T[] join(Class<T> clazz, T[] array1, T[] array2){
+        T[] array = (T[])Array.newInstance(clazz, array1.length + array2.length);
+        int A = 0;
+        for(; A < array1.length; A++){
+            array[A] = array1[A];
+        }
+        for(int B = 0; B < array2.length; B++){
+            array[A + B] = array2[B];
         }
         return array;
     }
