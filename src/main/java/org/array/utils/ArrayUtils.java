@@ -13,6 +13,15 @@ public interface ArrayUtils {
         return new HashSet<>(Arrays.asList(values));
     }
 
+    static <A, B> boolean contains(A[] a, B[] b){
+        for(int A = 0; A < Math.min(a.length, b.length); A++){
+            if(!a[A].equals(b[A])){
+                return false;
+            }
+        }
+        return true;
+    }
+
     @SafeVarargs
     static <O, T> Set<T> getCommon(Function<O, T> function, Function<T, String> toID, O... collection){
         return getCommon(function, toID, Arrays.asList(collection));
