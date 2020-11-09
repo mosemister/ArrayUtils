@@ -157,6 +157,14 @@ public interface ArrayUtils {
         return array;
     }
 
+    static <K, V> Map<K, V> toMappedValues(Function<V, K> toKey, Collection<V> keys){
+        return keys.parallelStream().collect(Collectors.toMap(toKey, v -> v));
+    }
+
+    static <K, V> Map<K, V> toMappedKeys(Function<K, V> toKey, Collection<K> keys){
+        return keys.parallelStream().collect(Collectors.toMap(k -> k, toKey));
+    }
+
     /**
      * Converts a specified array into a String.
      * @param split The devide between every instance
