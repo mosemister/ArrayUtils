@@ -296,9 +296,7 @@ public interface ArrayUtils {
         }
         String[] arr = new String[max - min];
         if (max + 1 - min >= 0) {
-            for(int A = min; A < max; A++){
-                arr[A - min] = array[A];
-            }
+            if (max - min >= 0) System.arraycopy(array, min, arr, 0, max - min);
         }
         return arr;
     }
